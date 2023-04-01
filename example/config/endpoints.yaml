@@ -1,0 +1,49 @@
+endpoints:
+  - name: updateUser
+    path: /users/:id
+    method: PATCH
+    metadata:
+      headers:
+        - Authorization: Bearer {token}
+      description: Actualiza la información de un usuario existente
+      response:
+        type: application/json
+      request:
+        body:
+          type: object
+          properties:
+            name:
+              type: string
+              maxLength: 250
+              minLength: 3
+            age:
+              type: integer
+              minimum: 1
+              maximum: 150
+        query:
+          type: object
+          properties:
+            date:
+              type: string
+              format: date
+              description: Fecha de la actualización en formato ISO 8601
+              example: "2023-04-01"
+
+  - name: deleteUser
+    path: /users/:id
+    method: DELETE
+    metadata:
+      headers:
+        - Authorization: Bearer {token}
+      description: Elimina un usuario existente
+      response:
+        type: application/json
+      request:
+        query:
+          type: object
+          properties:
+            date:
+              type: string
+              format: date
+              description: Fecha de la eliminación en formato ISO 8601
+              example: "2023-04-01"
