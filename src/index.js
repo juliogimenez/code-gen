@@ -3,13 +3,20 @@ import { readFileSync } from 'node:fs'
 import { createFilter } from '@rollup/pluginutils'
 import { parse } from 'esprima'
 import { load } from 'js-yaml'
-import { render } from 'ejs'
+import { format } from 'prettier'
+import handlebars from 'handlebars'
 import MagicString from 'magic-string'
 
+const compile = handlebars.compile
 const COMMENT_REGEX = /@codegen([\s\S]*?)@endcodegen/g
+
 function findCodeGenComments(code) {
   try {
-    const ast = parse(code, { comment: true, range: true, sourceType: 'module' })
+    const ast = parse(code, {
+      comment: true,
+      range: true,
+      sourceType: 'module'
+    })
     const comments = ast.comments
     const codeGenComments = []
     for (const comment of comments) {
@@ -44,7 +51,7 @@ function extractDirectives(commentText) {
     for (const match of matches) {
       const [, key, value] = match
       if (key === 'yaml') result['yaml'] = value
-      if (key === 'ejs') result['ejs'] = value
+      if (key === 'hbs') result['hbs'] = value
     }
     return result
   } catch (error) {
@@ -55,7 +62,7 @@ export default function codeGenPlugin(options = {}) {
   const filter = createFilter(options.include, options.exclude)
   return {
     name: 'code-gen-plugin',
-    async transform(code, id) {
+    transform(code, id) {
       if (!filter(id)) {
         return null
       }
@@ -64,24 +71,34 @@ export default function codeGenPlugin(options = {}) {
       for (const {
         start,
         end,
-        directives: { yaml, ejs }
+        directives: { yaml, hbs }
       } of comments) {
         try {
           const yamlString = readFileSync(resolve(id, '..', yaml), 'utf8')
-          const ejsString = readFileSync(resolve(id, '..', ejs), 'utf8')
-          const yamlData = await load(yamlString)
-          const generatedCode = await render(ejsString, yamlData, {
-            async: true
-          })
+          const hbsString = readFileSync(resolve(id, '..', hbs), 'utf8')
+          const yamlData = load(yamlString)
+          const hbsTemplate = compile(hbsString)
+          const generatedCode = hbsTemplate(yamlData)
           if (generatedCode && generatedCode.trim() !== '') {
             magicString.overwrite(start, end, generatedCode)
           }
         } catch (error) {
-          this.error(`Error parsing code: ${error.message}\n\n\n${error.stack}`)
+          this.error(`Error parsing code: ${error.message}\n${error.stack}`)
         }
       }
+      const newCode = options.format
+        ? format(magicString.toString(), {
+          parser: 'babel',
+          semi: false,
+          tabWidth: 2,
+          singleQuote: true,
+          printWidth: 80,
+          trailingComma: 'none',
+          ...options.prettier
+          })
+        : magicString.toString()
       return {
-        code: magicString.toString(),
+        code: newCode,
         map: magicString.generateMap({ hires: true })
       }
     }

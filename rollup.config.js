@@ -13,6 +13,8 @@ export default {
   plugins: [
     nodeResolve(),
     commonjs(),
-    codeGenPlugin()
+    codeGenPlugin({
+      format: true
+    })
   ]
 }

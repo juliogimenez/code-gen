@@ -4,14 +4,12 @@ class Http {
   /*
   @codegen
   yaml: "./config/endpoints.yaml"
-  ejs: "./template/methods.ejs"
+  hbs: "./template/methods.hbs"
   @endcodegen
   */
 
   func() {
-    return {
-
-    }
+    return {}
   }
 }
 export default Http
