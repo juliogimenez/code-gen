@@ -6,7 +6,7 @@ import { load } from 'js-yaml'
 import { render } from 'ejs'
 import MagicString from 'magic-string'
 
-const COMMENT_REGEX = /@codegen\s*(\r\n|\n|$)/g
+const COMMENT_REGEX = /@codegen([\s\S]*?)@endcodegen/g
 function findCodeGenComments(code) {
   try {
     const ast = parse(code, { comment: true, range: true, sourceType: 'module' })
@@ -62,6 +62,7 @@ export default function codeGenPlugin(options = {}) {
       const comments = findCodeGenComments(code)
       const magicString = new MagicString(code)
       for (const {
+        start,
         end,
         directives: { yaml, ejs }
       } of comments) {
@@ -73,7 +74,7 @@ export default function codeGenPlugin(options = {}) {
             async: true
           })
           if (generatedCode && generatedCode.trim() !== '') {
-            magicString.appendLeft(end, '\n' + generatedCode)
+            magicString.overwrite(start, end, generatedCode)
           }
         } catch (error) {
           this.error(`Error parsing code: ${error.message}\n\n\n${error.stack}`)
